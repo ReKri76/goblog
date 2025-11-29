@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"strings"
 	"time"
 
@@ -8,37 +9,33 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var key = []byte("tmp_key") //////////////////////
-
 type DBrecord struct {
-	Id       int
-	Mail     string `json:"mail"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
+	Id           int
+	Mail         string `json:"mail"`
+	Password     string `json:"password"`
+	Role         string `json:"role"`
+	RefreshToken string `json:"refresh_token"`
+	RefreshTime  string `json:"refresh_time"`
 }
 
-// ///////////////////////////////////////////////////////////////////
-func (src DBrecord) CreateJWTAcess() (string, error) {
+var key = make([]byte, 32)
+
+func init() {
+	if _, err := rand.Read(key); err != nil {
+		panic("Failed to generate JWT key: " + err.Error())
+	}
+}
+
+func (src DBrecord) CreateJWT(ttl int) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": src.Mail,
 		"role":    src.Role,
-		"exp":     time.Now().Add(time.Hour * 2).Unix(),
+		"exp":     time.Now().Add(time.Hour * time.Duration(ttl)).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(key)
 }
 
-func (src DBrecord) CreateJWTRefresh() (string, error) {
-	claims := jwt.MapClaims{
-		"user_id": src.Mail,
-		"role":    src.Role,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
-	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(key)
-}
-
-// ////////////////////////////////////////////////////////////////////////////////
 func main() {
-
 	app := fiber.New(fiber.Config{
 		Prefork:       true,
 		CaseSensitive: false,
@@ -57,13 +54,13 @@ func main() {
 		//И если data.Mail не содержится в базе данных
 		//Добавить в базу данных запись(пока не знаю как рабоать с postgresql здесь, завтра разберусь)
 
-		access, err := data.CreateJWTAcess()
+		access, err := data.CreateJWT(7)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"error": "Could not create access token",
 			})
 		}
-		refresh, err := data.CreateJWTRefresh()
+		refresh, err := data.CreateJWT(24 * 7)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"error": "Could not create refresh token",
@@ -78,7 +75,6 @@ func main() {
 			SameSite: "Lax",
 		})
 
-		// Возвращаем access token в теле ответа
 		return c.Status(200).JSON(fiber.Map{
 			"message":      "Registration successful",
 			"access_token": access,
