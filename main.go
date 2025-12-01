@@ -194,6 +194,14 @@ func main() {
 		})
 	})
 
+	app.Post("/api/auth/refresh-token", func(c *fiber.Ctx) error {
+		var src DBrecord
+		if err := c.BodyParser(&src); err != nil {
+			return err
+		}
+		})
+	})
+
 	app.Listen(":8080")
 
 }
