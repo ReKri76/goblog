@@ -18,10 +18,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type record interface {
-	CreateJWT() (string, error)
-}
-
 type DBrecord struct {
 	Mail         string `json:"mail"`
 	Password     string `json:"password"`
