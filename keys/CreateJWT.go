@@ -11,7 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type DBrecord struct {
+type Record struct {
 	Mail string `json:"mail"`
 	Role string `json:"role"`
 }
@@ -32,18 +32,15 @@ func loadKey(filename string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func (src DBrecord) CreateJWT(ttl int) (string, error) {
+func (src Record) CreateJWT(ttl int) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": src.Mail,
 		"role":    src.Role,
 		"exp":     time.Now().Add(time.Hour * time.Duration(ttl)).Unix(),
 	}
-	key, err := loadKey("./private.pem")
+	key, err := loadKey("keys/private.pem")
 	if err != nil {
 		return "", err
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
-}
-func chekAccess(acess string) bool {
-
 }
