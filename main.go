@@ -18,6 +18,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type record interface {
+	CreateJWT() (string, error)
+}
+
 type DBrecord struct {
 	Mail         string `json:"mail"`
 	Password     string `json:"password"`
@@ -189,8 +193,9 @@ func main() {
 		})
 
 		return c.Status(200).JSON(fiber.Map{
-			"message":      "Auth successful",
-			"access_token": access,
+			"message":       "Auth successful",
+			"access_token":  access,
+			"refresh_token": refresh,
 		})
 	})
 
@@ -199,6 +204,32 @@ func main() {
 		if err := c.BodyParser(&src); err != nil {
 			return err
 		}
+		query := "SELECT RefreshToken, RefreshTime, Mail, Role FROM users WHERE Mail = $1"
+		var data DBrecord
+		err = db.QueryRow(query, src.Mail).Scan(&data.RefreshToken, &data.RefreshTime, &data.Mail, &data.Role)
+		if err != nil {
+			return err
+		}
+		if data.RefreshTime < src.RefreshTime {
+			return c.Status(400).SendString("Invalid refresh time")
+		}
+		access, err := data.CreateJWT(2)
+		if err != nil {
+			return err
+		}
+		refresh, err := data.CreateJWT(24 * 7)
+		if err != nil {
+			return err
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:    "refresh_token",
+			Value:   refresh,
+			Expires: time.Now().Add(24 * 7 * time.Hour),
+		})
+		return c.Status(200).JSON(fiber.Map{
+			"message":      "Refresh successful",
+			"access_token": access,
 		})
 	})
 
