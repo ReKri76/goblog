@@ -1,6 +1,7 @@
 package register
 
 import (
+	"crypto/rsa"
 	"database/sql"
 	"goblog/keys"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Regist(db *sql.DB) fiber.Handler {
+func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		type Register struct {
 			keys.Record
@@ -36,17 +37,17 @@ func Regist(db *sql.DB) fiber.Handler {
 			return c.Status(403).SendString("Mail already used")
 		}
 
-		bytes, err := bcrypt.GenerateFromPassword([]byte(data.Password+data.Mail), 14)
+		bytes, err := bcrypt.GenerateFromPassword([]byte(data.Password+data.Mail), 10)
 		if err != nil {
 			return err
 		}
 		data.Password = string(bytes)
 
-		access, err := data.CreateJWT(2)
+		access, err := data.CreateJWT(2, private)
 		if err != nil {
 			return err
 		}
-		refresh, err := data.CreateJWT(24 * 7)
+		refresh, err := data.CreateJWT(24*7, private)
 		if err != nil {
 			return err
 		}
