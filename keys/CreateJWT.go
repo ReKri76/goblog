@@ -36,9 +36,9 @@ func LoadPrivateKey(filename string) (*rsa.PrivateKey, error) {
 
 func (src Record) CreateJWT(ttl int, key *rsa.PrivateKey) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id": src.Mail,
-		"role":    src.Role,
-		"exp":     time.Now().Add(time.Hour * time.Duration(ttl+3)).Unix(),
+		"mail": src.Mail,
+		"role": src.Role,
+		"exp":  time.Now().Add(time.Hour * time.Duration(ttl+3)).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
 }
@@ -79,7 +79,7 @@ func ChekJWT(public *rsa.PublicKey) fiber.Handler {
 			return public, nil
 		})
 		if err != nil {
-			return err
+			return c.Status(401).SendString("Invalid token")
 		}
 		if !token.Valid {
 			return c.Status(401).SendString("Invalid token")
@@ -88,9 +88,16 @@ func ChekJWT(public *rsa.PublicKey) fiber.Handler {
 		if !ok {
 			return c.Status(401).SendString("Invalid token")
 		}
-
-		c.Locals("mail", claims["user_id"])
-		c.Locals("role", claims["role"])
+		mail, ok := claims["mail"].(string)
+		if !ok || mail == "" {
+			return c.Status(401).SendString("Invalid token")
+		}
+		role, ok := claims["role"].(string)
+		if !ok || role == "" {
+			return c.Status(401).SendString("Invalid token")
+		}
+		c.Locals("mail", mail)
+		c.Locals("role", role)
 		return c.Next()
 	}
 }

@@ -3,32 +3,46 @@ package register
 import (
 	"crypto/rsa"
 	"database/sql"
+	"fmt"
 	"goblog/keys"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Refresh(db *sql.DB, private *rsa.PrivateKey, public *rsa.PublicKey) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		type refresher struct {
 			keys.Record
-			RefreshToken string `json:"refresh_token"`
-			RefreshTime  int64  `json:"refresh_time"`
-		}
-		var src refresher
-		if err := c.BodyParser(&src); err != nil {
-			return err
+			RefreshTime int64
 		}
 		refresh := c.Cookies("refresh_token")
-		query := "SELECT RefreshToken, RefreshTime FROM users WHERE Mail = $1"
+		token, err := jwt.Parse(refresh, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("Invalid token")
+			}
+			return public, nil
+		})
+		if err != nil {
+			return c.Status(401).SendString("Invalid token")
+		}
+		if !token.Valid {
+			return c.Status(401).SendString("Invalid token")
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return c.Status(401).SendString("Invalid token")
+		}
+		query := "SELECT RefreshTime FROM users WHERE Mail = $1"
 		var data refresher
-		err := db.QueryRow(query, src.Mail).Scan(&data.RefreshToken, &data.RefreshTime)
+		err = db.QueryRow(query, claims["mail"]).Scan(&data.RefreshTime)
 		if err != nil {
 			return err
 		}
-		//проверить подпись токена
-		//проверить время токена
+		if data.RefreshTime < time.Now().Unix() {
+			return c.Status(401).SendString("Invalid token")
+		}
 		access, err := data.CreateJWT(2, private)
 		if err != nil {
 			return err

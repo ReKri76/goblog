@@ -6,30 +6,47 @@ import (
 	"goblog/keys"
 	"goblog/register"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
+	godotenv.Load()
 	app := fiber.New(fiber.Config{
 		Prefork:       true,
 		CaseSensitive: false,
 		StrictRouting: false,
 	})
-	private, err := keys.LoadPrivateKey("keys/private.pem")
+
+	private, err := keys.LoadPrivateKey(os.Getenv("PRIVATE_KEY"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	public, err := keys.LoadPublicKey("keys/public.pem")
+	public, err := keys.LoadPublicKey(os.Getenv("PUBLIC_KEY"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=BhD13 dbname=postgres sslmode=disable")
+
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	pass := os.Getenv("DB_PASSWORD")
+	name := os.Getenv("DB_NAME")
+
+	dsn := fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		host, port, user, pass, name)
+	db, err := sql.Open("postgres", dsn)
+	if err := db.Ping(); err != nil {
+		log.Fatal("DB connection error:", err)
+	}
+
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
+		log.Fatal(err)
 	}
 	defer db.Close()
 
@@ -40,9 +57,9 @@ func main() {
 		}
 	}()
 
-	app.Post("/api/register", register.Regist(db, private))
+	app.Use("/api/chek", keys.ChekJWT(public))
 
-	app.Use("/api/auth", keys.ChekJWT(public))
+	app.Post("/api/register", register.Regist(db, private))
 
 	app.Post("/api/auth/login", register.Login(db, private))
 
