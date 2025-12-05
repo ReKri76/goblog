@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"goblog/keys"
+	"goblog/post"
 	"goblog/register"
 	"log"
 	"os"
@@ -44,7 +45,6 @@ func main() {
 	if err := db.Ping(); err != nil {
 		log.Fatal("DB connection error:", err)
 	}
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,8 +52,11 @@ func main() {
 
 	go func() {
 		for {
+			_, err = db.Exec("DELETE FROM users WHERE RefreshTime < $1", time.Now().Add(time.Hour).Unix())
+			if err != nil {
+				log.Fatal(err)
+			}
 			time.Sleep(time.Hour * 24)
-			db.Exec("DELETE FROM users WHERE RefreshTime < NOW()")
 		}
 	}()
 
@@ -64,6 +67,12 @@ func main() {
 	app.Post("/api/auth/login", register.Login(db, private))
 
 	app.Post("/api/auth/refresh-token", register.Refresh(db, private, public))
+
+	app.Post("/api/chek/posts", post.CreatePost(db))
+
+	app.Put("/api/chek/posts/:postID", post.ChangePost(db))
+
+	app.Patch("/api/chek/posts/:postId/:status", post.PublicPost(db))
 
 	app.Listen(":8080")
 
