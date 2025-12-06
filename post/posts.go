@@ -95,3 +95,35 @@ func ChangePost(db *sql.DB) fiber.Handler {
 		return c.Status(200).SendString("Successfully changed post")
 	}
 }
+
+func ReadPost(db *sql.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		type Post struct {
+			Id      int
+			Author  string
+			Title   string
+			Content string
+			Key     string
+			Created string
+			Updated string
+			Status  string
+		}
+		//всегда будут возвращаться одни и те посты
+		//нужно исправить
+		var data = make([]Post, 0, 16)
+		rows, err := db.Query("SELECT * FROM posts ORDER BY Created DESC LIMIT 16")
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var post Post
+			if err = rows.Scan(&post.Id, &post.Author, &post.Title, &post.Content, &post.Key, &post.Created, &post.Updated, &post.Status); err != nil {
+				return err
+			}
+			if post.Status != "Draft" || post.Author == c.Locals("mail").(string) {
+				data = append(data, post)
+			}
+		}
+		return c.Status(200).JSON(&data)
+	}
+}

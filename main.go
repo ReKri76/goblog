@@ -68,11 +68,13 @@ func main() {
 
 	app.Post("/api/auth/refresh-token", register.Refresh(db, private, public))
 
-	app.Post("/api/chek/posts", post.CreatePost(db))
+	app.Post("/api/chek/post", post.CreatePost(db))
 
-	app.Put("/api/chek/posts/:postID", post.ChangePost(db))
+	app.Put("/api/chek/post/:postID", post.ChangePost(db))
 
-	app.Patch("/api/chek/posts/:postId/:status", post.PublicPost(db))
+	app.Patch("/api/chek/post/:postId/:status", post.PublicPost(db))
+
+	app.Get("/api/chek/posts", post.ReadPost(db))
 
 	app.Listen(":8080")
 

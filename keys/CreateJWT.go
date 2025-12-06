@@ -74,7 +74,7 @@ func ChekJWT(public *rsa.PublicKey) fiber.Handler {
 
 		token, err := jwt.Parse(src, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, fmt.Errorf("Invalid token")
+				return c.Status(401).SendString("Invalid token"), nil
 			}
 			return public, nil
 		})
