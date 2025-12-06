@@ -15,7 +15,7 @@ func CreatePost(db *sql.DB) fiber.Handler {
 		}
 		mail := c.Locals("mail").(string)
 		type Post struct {
-			Key     string `json:"idempotencyKey"`
+			Key     int    `json:"idempotencyKey"`
 			Title   string `json:"title"`
 			Content string `json:"body"`
 		}
@@ -33,7 +33,7 @@ func CreatePost(db *sql.DB) fiber.Handler {
 			return c.Status(409).SendString("Key already used")
 		}
 		query = "INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status) VALUES ($1, $2, $3, $4, $5, $6, $7)"
-		_, err = db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now(), time.Now(), "Draft")
+		_, err = db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft")
 		if err != nil {
 			return err
 		}
@@ -54,7 +54,7 @@ func PublicPost(db *sql.DB) fiber.Handler {
 			return c.Status(400).SendString("Invalid request")
 		}
 		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
-		res, err := db.Exec(query, Key, c.Locals("Mail").(string), "Published")
+		res, err := db.Exec(query, Key, c.Locals("mail").(string), "Published")
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func ChangePost(db *sql.DB) fiber.Handler {
 			return c.Status(400).SendString("Invalid request")
 		}
 		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2"
-		res, err := db.Exec(query, Key, c.Locals("Mail").(string), src.Title, src.Content, time.Now().Unix())
+		res, err := db.Exec(query, Key, c.Locals("mail").(string), src.Title, src.Content, time.Now().Unix())
 		if err != nil {
 			return err
 		}
@@ -108,8 +108,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 			Updated string
 			Status  string
 		}
-		//всегда будут возвращаться одни и те посты
-		//нужно исправить
+		//бред какой, хотя в задании таки написано делать
 		var data []Post
 		rows, err := db.Query("SELECT * FROM posts")
 		if err != nil {
