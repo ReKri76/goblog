@@ -110,8 +110,8 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		}
 		//всегда будут возвращаться одни и те посты
 		//нужно исправить
-		var data = make([]Post, 0, 16)
-		rows, err := db.Query("SELECT * FROM posts ORDER BY Created DESC LIMIT 16")
+		var data []Post
+		rows, err := db.Query("SELECT * FROM posts")
 		if err != nil {
 			return err
 		}
