@@ -88,6 +88,8 @@ func main() {
 
 	app.Post("/api/chek/post/:postId/image", post.AddImage(db, mn))
 
+	app.Delete("/api/chek/post/:postId/image/:imagePath", post.DeleteImage(db, mn))
+
 	app.Listen(":8080")
 
 }

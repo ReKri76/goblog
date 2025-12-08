@@ -63,15 +63,39 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return err
 		}
 
-		query := "UPDATE posts SET images = array_append(images, $1) where author=$2"
-		_, err = db.Exec(query, path, mail)
+		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND post_id=$3"
+		res, err := db.Exec(query, path, mail, c.Params("postId"))
 		if err != nil {
 			return err
+		}
+
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rows == 0 {
+			return c.Status(404).SendString("Not found")
 		}
 
 		return c.Status(201).JSON(fiber.Map{
 			"message": "ok",
 			"path":    path,
 		})
+	}
+}
+
+func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		mail := c.Locals("mail").(string)
+		if role := c.Locals("role").(string); role != "Author" {
+			return c.Status(403).SendString("User is not author")
+		}
+		query := "UPDATE posts SET images = array_append(images, null) where author=$1 AND post_id=$2"
+		_, err := db.Exec(query, mail, c.Params("postId"))
+		if err != nil {
+			return err
+		}
+
 	}
 }

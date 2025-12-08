@@ -107,8 +107,9 @@ func ReadPost(db *sql.DB) fiber.Handler {
 			Created string
 			Updated string
 			Status  string
+			Images  []string
 		}
-		//бред какой, хотя в задании таки написано делать
+
 		var data []Post
 		rows, err := db.Query("SELECT * FROM posts")
 		if err != nil {
@@ -116,7 +117,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		}
 		for rows.Next() {
 			var post Post
-			if err = rows.Scan(&post.Id, &post.Author, &post.Title, &post.Content, &post.Key, &post.Created, &post.Updated, &post.Status); err != nil {
+			if err = rows.Scan(&post.Id, &post.Author, &post.Title, &post.Content, &post.Key, &post.Created, &post.Updated, &post.Status, &post.Images); err != nil {
 				return err
 			}
 			if post.Status != "Draft" || post.Author == c.Locals("mail").(string) {
