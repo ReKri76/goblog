@@ -108,6 +108,6 @@ func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return c.Status(404).SendString("Not found")
 		}
 
-		return c.Status(200).JSON("Success")
+		return c.Status(200).JSON("Success (maybe)")
 	}
 }
