@@ -91,11 +91,23 @@ func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 		if role := c.Locals("role").(string); role != "Author" {
 			return c.Status(403).SendString("User is not author")
 		}
-		query := "UPDATE posts SET images = array_append(images, null) where author=$1 AND post_id=$2"
-		_, err := db.Exec(query, mail, c.Params("postId"))
+		err := mn.RemoveObject(context.Background(), "image", c.Params("imagePath"), minio.RemoveObjectOptions{})
 		if err != nil {
 			return err
 		}
+		query := "UPDATE posts SET images=array_remove(images,$3) where author=$1 AND post_id=$2"
+		res, err := db.Exec(query, mail, c.Params("postId"), c.Params("imagePath"))
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			return c.Status(404).SendString("Not found")
+		}
 
+		return c.Status(200).JSON("Success")
 	}
 }
