@@ -13,6 +13,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func main() {
@@ -50,9 +52,17 @@ func main() {
 	}
 	defer db.Close()
 
+	mn, err := minio.New(os.Getenv("MINIO_HOST"), &minio.Options{
+		Creds:  credentials.NewStaticV4(os.Getenv("MINIO_USER"), os.Getenv("MINIO_PASSWORD"), ""),
+		Secure: false,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go func() {
 		for {
-			_, err = db.Exec("DELETE FROM users WHERE RefreshTime < $1", time.Now().Add(time.Hour).Unix())
+			_, err = db.Exec("DELETE FROM users WHERE RefreshTime < $1", time.Now().Unix())
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -75,6 +85,8 @@ func main() {
 	app.Patch("/api/chek/post/:postId/:status", post.PublicPost(db))
 
 	app.Get("/api/chek/posts", post.ReadPost(db))
+
+	app.Post("/api/chek/post/:postId/image", post.AddImage(db, mn))
 
 	app.Listen(":8080")
 

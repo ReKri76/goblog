@@ -38,7 +38,7 @@ func (src Record) CreateJWT(ttl int, key *rsa.PrivateKey) (string, error) {
 	claims := jwt.MapClaims{
 		"mail": src.Mail,
 		"role": src.Role,
-		"exp":  time.Now().Add(time.Hour * (time.Duration(ttl) + 3)).Unix(),
+		"exp":  time.Now().Add(time.Hour * (time.Duration(ttl))).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
 }
