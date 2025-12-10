@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 )
 
 func CreatePost(db *sql.DB) fiber.Handler {
@@ -32,8 +33,8 @@ func CreatePost(db *sql.DB) fiber.Handler {
 		if exists {
 			return c.Status(409).SendString("Key already used")
 		}
-		query = "INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status) VALUES ($1, $2, $3, $4, $5, $6, $7)"
-		_, err = db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft")
+		query = "INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images[1]) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+		_, err = db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
 		if err != nil {
 			return err
 		}
@@ -107,7 +108,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 			Created string
 			Updated string
 			Status  string
-			Images  []string
+			Images  pq.StringArray
 		}
 
 		var data []Post
@@ -117,7 +118,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		}
 		for rows.Next() {
 			var post Post
-			if err = rows.Scan(&post.Id, &post.Author, &post.Title, &post.Content, &post.Key, &post.Created, &post.Updated, &post.Status, &post.Images); err != nil {
+			if err = rows.Scan(&post.Id, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images, &post.Author); err != nil {
 				return err
 			}
 			if post.Status != "Draft" || post.Author == c.Locals("mail").(string) {

@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -74,12 +75,12 @@ func ChekJWT(public *rsa.PublicKey) fiber.Handler {
 
 		token, err := jwt.Parse(src, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return c.Status(401).SendString("Invalid token"), nil
+				return c.Status(401).SendString("Invalid token"), errors.New("Invalid token")
 			}
 			return public, nil
 		})
 		if err != nil {
-			return c.Status(401).SendString("Invalid token")
+			return c.Status(401).SendString("Invalid token4")
 		}
 		if !token.Valid {
 			return c.Status(401).SendString("Invalid token")

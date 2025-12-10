@@ -29,6 +29,8 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return err
 		}
 
+		defer file.Close()
+
 		buf := make([]byte, 512)
 		_, err = file.Read(buf)
 		if err != nil {
@@ -46,7 +48,7 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 		}
 
 		name := header.Filename
-		name = "<" + name + "><" + fmt.Sprint(time.Now().Unix()) + ">." + ext
+		name = "[" + name + "][" + fmt.Sprint(time.Now().Unix()) + "]." + ext
 		path := "images/" + name
 
 		_, err = mn.PutObject(
@@ -63,7 +65,7 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return err
 		}
 
-		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND post_id=$3"
+		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND key=$3"
 		res, err := db.Exec(query, path, mail, c.Params("postId"))
 		if err != nil {
 			return err
@@ -91,11 +93,11 @@ func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 		if role := c.Locals("role").(string); role != "Author" {
 			return c.Status(403).SendString("User is not author")
 		}
-		err := mn.RemoveObject(context.Background(), "image", c.Params("imagePath"), minio.RemoveObjectOptions{})
+		err := mn.RemoveObject(context.Background(), "images", "images/"+c.Params("imagePath"), minio.RemoveObjectOptions{})
 		if err != nil {
 			return err
 		}
-		query := "UPDATE posts SET images=array_remove(images,$3) where author=$1 AND post_id=$2"
+		query := "UPDATE posts SET images=array_remove(images,$3) where author=$1 AND key=$2"
 		res, err := db.Exec(query, mail, c.Params("postId"), c.Params("imagePath"))
 		if err != nil {
 			return err
