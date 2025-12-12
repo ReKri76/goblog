@@ -14,30 +14,31 @@ func CreatePost(db *sql.DB) fiber.Handler {
 		if role != "Author" {
 			return c.Status(403).SendString("User is not author")
 		}
+
 		mail := c.Locals("mail").(string)
+
 		type Post struct {
 			Key     int    `json:"idempotencyKey"`
 			Title   string `json:"title"`
 			Content string `json:"body"`
 		}
+
 		var src Post
-		var exists bool
 		if err := c.BodyParser(&src); err != nil {
 			return err
 		}
-		query := "SELECT EXISTS(SELECT 1 FROM posts WHERE Key=$1)"
-		err := db.QueryRow(query, src.Key).Scan(&exists)
+
+		query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
+				SELECT $1, $2, $3, $4, $5, $6, $7, ARRAY[$8]
+				    WHERE NOT EXISTS (SELECT 1 FROM posts WHERE Key = $2)`
+		_, err := db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
 		if err != nil {
+			if err == sql.ErrNoRows {
+				return c.Status(404).SendString("Key already used")
+			}
 			return err
 		}
-		if exists {
-			return c.Status(409).SendString("Key already used")
-		}
-		query = "INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images[1]) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
-		_, err = db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
-		if err != nil {
-			return err
-		}
+
 		return c.Status(201).SendString("Successfully created post")
 	}
 }
@@ -47,13 +48,16 @@ func PublicPost(db *sql.DB) fiber.Handler {
 		if role != "Author" {
 			return c.Status(403).SendString("User is not author")
 		}
+
 		if c.Params("status") != "Published" {
 			return c.Status(400).SendString("Invalid request")
 		}
+
 		Key, err := c.ParamsInt("postId")
 		if err != nil {
 			return c.Status(400).SendString("Invalid request")
 		}
+
 		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
 		res, err := db.Exec(query, Key, c.Locals("mail").(string), "Published")
 		if err != nil {
@@ -62,6 +66,7 @@ func PublicPost(db *sql.DB) fiber.Handler {
 		if rows, _ := res.RowsAffected(); rows == 0 {
 			return c.Status(404).SendString("Post not found")
 		}
+
 		return c.Status(200).SendString("Post published")
 	}
 }
