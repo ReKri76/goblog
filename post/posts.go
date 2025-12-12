@@ -77,22 +77,32 @@ func ChangePost(db *sql.DB) fiber.Handler {
 			Title   string `json:"title"`
 			Content string `json:"body"`
 		}
+
 		var src Post
 		if err := c.BodyParser(&src); err != nil {
 			return err
 		}
+
 		Key, err := c.ParamsInt("postId")
 		if err != nil {
 			return c.Status(400).SendString("Invalid request")
 		}
-		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2"
+
+		//слово не воробей
+		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status<>$3"
 		res, err := db.Exec(query, Key, c.Locals("mail").(string), src.Title, src.Content, time.Now().Unix())
 		if err != nil {
 			return err
 		}
-		if rows, _ := res.RowsAffected(); rows == 0 {
+
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
 			return c.Status(404).SendString("Post not found")
 		}
+
 		return c.Status(200).SendString("Successfully changed post")
 	}
 }
@@ -111,20 +121,26 @@ func ReadPost(db *sql.DB) fiber.Handler {
 			Images  pq.StringArray
 		}
 
+		limit := 16
+		page := c.QueryInt("page")
+
 		var data []Post
-		rows, err := db.Query("SELECT * FROM posts")
+		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR NOT Status<>$2 ORDER BY Created DESC LIMIT $3 OFFSET $4", c.Locals("Mail"), "Draft", limit, limit*page)
 		if err != nil {
 			return err
 		}
+
 		for rows.Next() {
 			var post Post
 			if err = rows.Scan(&post.Id, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images, &post.Author); err != nil {
 				return err
 			}
-			if post.Status != "Draft" || post.Author == c.Locals("mail").(string) {
-				data = append(data, post)
-			}
+			data = append(data, post)
 		}
-		return c.Status(200).JSON(&data)
+
+		return c.Status(200).JSON(fiber.Map{
+			"data": &data,
+			"page": page,
+		})
 	}
 }

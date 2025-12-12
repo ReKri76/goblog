@@ -39,11 +39,9 @@ func main() {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
+
 	db, err := sql.Open("postgres", dsn)
-	if err := db.Ping(); err != nil {
-		log.Fatal("DB connection error:", err)
-	}
-	if err != nil {
+	if err = db.Ping(); err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
@@ -60,11 +58,14 @@ func main() {
 		for {
 			_, err = db.Exec("DELETE FROM users WHERE RefreshTime < $1", time.Now().Unix())
 			if err != nil {
-				log.Fatal(err)
+				log.Printf("[CLEANUP] Error deleting users: %v", err)
 			}
-			time.Sleep(time.Hour * 24)
+
+			time.Sleep(time.Hour * 24 * 7)
 		}
 	}()
+
+	//TODO - добавить регулярное удаление постов
 
 	app.Use("/api/chek", keys.ChekJWT(public))
 
@@ -80,12 +81,12 @@ func main() {
 
 	app.Patch("/api/chek/post/:postId/:status", post.PublicPost(db))
 
-	app.Get("/api/chek/posts", post.ReadPost(db))
+	app.Get("/api/chek/posts/:limit", post.ReadPost(db))
 
 	app.Post("/api/chek/post/:postId/image", post.AddImage(db, mn))
 
 	app.Delete("/api/chek/post/:postId/image/:imagePath", post.DeleteImage(db, mn))
 
-	app.Listen(":8080")
+	app.Listen(os.Getenv("FIBER_PORT"))
 
 }

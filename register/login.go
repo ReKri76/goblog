@@ -16,20 +16,26 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 			keys.Record
 			Password string `json:"password"`
 		}
+
 		var src loginer
 		if err := c.BodyParser(&src); err != nil {
 			return err
 		}
+
 		var data loginer
 		query := "SELECT Role, Password FROM users WHERE Mail = $1"
 		err := db.QueryRow(query, src.Mail).Scan(&data.Role, &data.Password)
 		if err != nil {
+			time.Sleep(time.Second * 5)
 			return c.Status(403).SendString("Invalid mail or password")
 		}
+
 		err = bcrypt.CompareHashAndPassword([]byte(data.Password), []byte(src.Password+src.Mail))
 		if err != nil {
+			time.Sleep(time.Second * 5)
 			return c.Status(403).SendString("Invalid mail or password")
 		}
+
 		if src.Role != data.Role {
 			return c.Status(500).SendString("Invalid role")
 		}

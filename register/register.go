@@ -17,24 +17,19 @@ func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 			keys.Record
 			Password string `json:"password"`
 		}
+
 		var data Register
 		if err := c.BodyParser(&data); err != nil {
 			return err
 		}
+
 		if data.Role != "Author" && data.Role != "Reader" {
 			return c.Status(400).SendString("invalid role")
 		}
+
+		//Зачем вообще регистрировать по мейлу? Может еще и по пасспорту сразу? Моей проверки достаточно. Не условие задания, то я бы вообще не делал проверки.
 		if !strings.Contains(data.Mail, "@") {
 			return c.Status(400).SendString("Mail address is not valid")
-		}
-		var exists bool
-		query := "SELECT EXISTS(SELECT 1 FROM users WHERE Mail = $1);"
-		err := db.QueryRow(query, data.Mail).Scan(&exists)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return c.Status(403).SendString("Mail already used")
 		}
 
 		bytes, err := bcrypt.GenerateFromPassword([]byte(data.Password+data.Mail), 10)
@@ -47,16 +42,20 @@ func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 		if err != nil {
 			return err
 		}
+
 		refresh, err := data.CreateJWT(24*7, private)
 		if err != nil {
 			return err
 		}
 
-		insertQuery := `
-    INSERT INTO users (Mail, Password, Role, RefreshToken, RefreshTime)
-    VALUES ($1, $2, $3, $4, $5)`
-
-		_, err = db.Exec(insertQuery,
+		query := `
+	INSERT INTO users (Mail, Password, Role, RefreshToken, RefreshTime)
+	SELECT $1, $2, $3, $4, $5
+	WHERE NOT EXISTS (
+    	SELECT 1 FROM users WHERE Mail = $1
+	)
+`
+		щекотливое, err := db.Exec(query,
 			data.Mail,
 			data.Password,
 			data.Role,
@@ -65,6 +64,13 @@ func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 		)
 		if err != nil {
 			return err
+		}
+		rows, err := щекотливое.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			return c.Status(403).SendString("Mail already used")
 		}
 
 		c.Cookie(&fiber.Cookie{
