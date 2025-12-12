@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"goblog/keys"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -61,11 +63,34 @@ func main() {
 				log.Printf("[CLEANUP] Error deleting users: %v", err)
 			}
 
-			time.Sleep(time.Hour * 24 * 7)
+			time.Sleep(time.Hour * 24)
 		}
 	}()
 
-	//TODO - добавить регулярное удаление постов
+	go func() {
+		var images pq.StringArray
+
+		rows, err := db.Query("DELETE FROM posts WHERE ($1- Updated)<$2 RETURNING images", time.Now().Unix(), time.Hour*24*365)
+
+		for rows.Next() {
+			if err = rows.Scan(&images); err != nil {
+				log.Printf("[CLEANUP] Error deleting posts: %v", err)
+			}
+			for _, image := range images {
+				err := mn.RemoveObject(context.Background(), "images", image, minio.RemoveObjectOptions{})
+				if err != nil {
+					log.Printf("[CLEANUP] Error deleting posts: %v", err)
+				}
+			}
+		}
+
+		if err != nil {
+			log.Printf("[CLEANUP] Error deleting users: %v", err)
+		}
+
+		time.Sleep(time.Hour * 24 * 7)
+
+	}()
 
 	app.Use("/api/chek", keys.ChekJWT(public))
 

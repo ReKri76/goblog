@@ -94,7 +94,7 @@ func ChangePost(db *sql.DB) fiber.Handler {
 		}
 
 		//слово не воробей
-		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status<>$3"
+		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status<>'Draft'"
 		res, err := db.Exec(query, Key, c.Locals("mail").(string), src.Title, src.Content, time.Now().Unix())
 		if err != nil {
 			return err
@@ -130,7 +130,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		page := c.QueryInt("page")
 
 		var data []Post
-		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR NOT Status<>$2 ORDER BY Created DESC LIMIT $3 OFFSET $4", c.Locals("Mail"), "Draft", limit, limit*page)
+		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $3 OFFSET $4", c.Locals("Mail"), "Draft", limit, limit*page)
 		if err != nil {
 			return err
 		}
