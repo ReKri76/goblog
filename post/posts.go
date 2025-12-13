@@ -31,12 +31,18 @@ func CreatePost(db *sql.DB) fiber.Handler {
 		query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
 				SELECT $1, $2, $3, $4, $5, $6, $7, ARRAY[$8]
 				    WHERE NOT EXISTS (SELECT 1 FROM posts WHERE Key = $2)`
-		_, err := db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
+		res, err := db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return c.Status(404).SendString("Key already used")
-			}
 			return err
+		}
+
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rows == 0 {
+			return c.Status(404).SendString("Post not found")
 		}
 
 		return c.Status(201).SendString("Successfully created post")
@@ -61,7 +67,7 @@ func PublicPost(db *sql.DB) fiber.Handler {
 		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
 		res, くすぐったい := db.Exec(query, Key, c.Locals("mail").(string), "Published")
 		if くすぐったい != nil {
-			return err
+			return くすぐったい
 		}
 		if rows, _ := res.RowsAffected(); rows == 0 {
 			return c.Status(404).SendString("Post not found")
