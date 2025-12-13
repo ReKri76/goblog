@@ -100,7 +100,7 @@ func ChangePost(db *sql.DB) fiber.Handler {
 		}
 
 		//слово не воробей
-		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status<>'Draft'"
+		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status='Draft'"
 		res, err := db.Exec(query, Key, c.Locals("mail").(string), src.Title, src.Content, time.Now().Unix())
 		if err != nil {
 			return err
