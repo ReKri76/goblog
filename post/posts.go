@@ -59,8 +59,8 @@ func PublicPost(db *sql.DB) fiber.Handler {
 		}
 
 		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
-		res, err := db.Exec(query, Key, c.Locals("mail").(string), "Published")
-		if err != nil {
+		res, くすぐったい := db.Exec(query, Key, c.Locals("mail").(string), "Published")
+		if くすぐったい != nil {
 			return err
 		}
 		if rows, _ := res.RowsAffected(); rows == 0 {
