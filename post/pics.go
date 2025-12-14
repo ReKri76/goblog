@@ -14,7 +14,6 @@ import (
 
 func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		mail := c.Locals("mail").(string)
 		if role := c.Locals("role").(string); role != "Author" {
 			return c.Status(403).SendString("User is not author")
 		}
@@ -67,7 +66,7 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 
 		//слово не воробей
 		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND key=$3 AND status<>'Draft'"
-		res, err := db.Exec(query, path, mail, c.Params("postId"))
+		res, err := db.Exec(query, path, c.Locals("mail"), c.Params("postId"))
 		if err != nil {
 			return err
 		}

@@ -30,7 +30,6 @@ func TestJWT(t *testing.T) {
 	mail := "test"
 	role := "test"
 	record := keys.Record{mail, role}
-
 	token, err := record.CreateJWT(1337, private)
 	if err != nil {
 		t.Fatalf("%v", err)

@@ -106,7 +106,7 @@ func main() {
 
 	app.Patch("/api/chek/post/:postId/:status", post.PublicPost(db))
 
-	app.Get("/api/chek/posts/:limit", post.ReadPost(db))
+	app.Get("/api/chek/posts/", post.ReadPost(db))
 
 	app.Post("/api/chek/post/:postId/image", post.AddImage(db, mn))
 

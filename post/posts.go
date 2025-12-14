@@ -136,7 +136,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		page := c.QueryInt("page")
 
 		var data []Post
-		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $3 OFFSET $4", c.Locals("Mail"), "Draft", limit, limit*page)
+		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $2 OFFSET $3", c.Locals("Mail"), limit, limit*page)
 		if err != nil {
 			return err
 		}

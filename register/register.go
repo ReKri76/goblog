@@ -52,7 +52,7 @@ func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 	INSERT INTO users (Mail, Password, Role, RefreshToken, RefreshTime)
 	SELECT $1, $2, $3, $4, $5
 	WHERE NOT EXISTS (
-    	SELECT 1 FROM users WHERE Mail = $1
+    	SELECT 1 FROM users WHERE Mail = $6
 	)
 `
 		щекотливое, err := db.Exec(query,
@@ -61,6 +61,7 @@ func Regist(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 			data.Role,
 			refresh,
 			time.Now().Add(time.Hour*time.Duration(24*7)).Unix(),
+			data.Mail,
 		)
 		if err != nil {
 			return err
