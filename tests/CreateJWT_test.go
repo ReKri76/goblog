@@ -1,108 +1,122 @@
 package tests
 
 import (
-	"testing"
+	"crypto/rsa"
+	"errors"
+	"fmt"
+	"goblog/keys"
+	"io"
+	"net/http"
+	"strings"
 
-	"github.com/stretchr/testify/mock"
+	"github.com/gofiber/fiber/v2"
 )
 
-// Интерфейсы объявляем первыми
-type ValidationService interface {
-	ValidateUsername(username string) error
-	ValidatePassword(password string) error
-}
+func JWT_test(pub *rsa.PublicKey, private *rsa.PrivateKey) (bool, error) {
+	mail := "test"
+	role := "test"
+	record := keys.Record{mail, role}
 
-type UserRepository interface {
-	Authenticate(username string, password string) (bool, error)
-}
-
-type AuthService interface {
-	Authenticate(username string, password string) (bool, error)
-}
-
-// Реализации объявляем после интерфейсов
-type ValidationServiceImpl struct{}
-
-func (svc *ValidationServiceImpl) ValidateUsername(username string) error {
-	// perform validation logic
-	return nil // return nil if validation succeeds, or an error if it fails
-}
-
-func (svc *ValidationServiceImpl) ValidatePassword(password string) error {
-	// perform validation logic
-	return nil // return nil if validation succeeds, or an error if it fails
-}
-
-type UserRepositoryImpl struct{}
-
-func (repo *UserRepositoryImpl) Authenticate(username string, password string) (bool, error) {
-	// perform authentication logic
-	return true, nil
-}
-
-type AuthServiceImpl struct {
-	validator ValidationService
-	repo      UserRepository
-}
-
-func NewAuthServiceImpl(validator ValidationService, repo UserRepository) AuthService {
-	return &AuthServiceImpl{
-		validator: validator,
-		repo:      repo,
-	}
-}
-
-func (s *AuthServiceImpl) Authenticate(username string, password string) (bool, error) {
-	if err := s.validator.ValidateUsername(username); err != nil {
-		return false, err
-	}
-	if err := s.validator.ValidatePassword(password); err != nil {
-		return false, err
-	}
-	return s.repo.Authenticate(username, password)
-}
-
-type MockValidationService struct {
-	mock.Mock
-}
-
-func (m *MockValidationService) ValidateUsername(username string) error {
-	args := m.Called(username)
-	return args.Error(0)
-}
-
-func (m *MockValidationService) ValidatePassword(password string) error {
-	args := m.Called(password)
-	return args.Error(0)
-}
-
-type MockUserRepository struct {
-	mock.Mock
-}
-
-func (m *MockUserRepository) Authenticate(username string, password string) (bool, error) {
-
-	args := m.Called(username, password)
-	return args.Bool(0), args.Error(1)
-}
-
-func TestAuthenticate(t *testing.T) {
-	username := "testuser"
-	password := "testpassword"
-
-	mockValidator := new(MockValidationService)
-	mockValidator.On("ValidateUsername", username).Return(nil)
-	mockValidator.On("ValidatePassword", password).Return(nil)
-	mockRepo := new(MockUserRepository)
-	mockRepo.On("Authenticate", username, password).Return(true, nil)
-	authService := NewAuthServiceImpl(mockValidator, mockRepo)
-	authenticated, err := authService.Authenticate(username, password)
-
+	token, err := record.CreateJWT(1337, private)
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		return false, err
 	}
 
-	if !authenticated {
-		t.Error("Expected authentication to succeed, but it failed")
+	test := fiber.New()
+
+	test.Use(keys.ChekJWT(pub))
+
+	test.Get("/test", func(c *fiber.Ctx) error {
+		Mail, ok := c.Locals("mail").(string)
+		Role, ok2 := c.Locals("role").(string)
+		if !ok || !ok2 {
+			return c.SendStatus(500)
+		}
+		return c.Status(200).SendString(Mail + " " + Role)
+	})
+
+	reqValid, err := http.NewRequest("GET", "/test", nil)
+	if err != nil {
+		return false, err
 	}
+
+	reqValid.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := test.Test(reqValid)
+	if err != nil {
+		return false, err
+	}
+
+	if res.StatusCode != 200 {
+		return false, errors.New("[ERROR] Status incorrect. Code:1. Status: " + res.Status)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return false, err
+	}
+
+	parts := strings.Split(string(body), " ")
+	if len(parts) != 2 {
+		return false, fmt.Errorf("[ERROR] Incorrect number of parts. Expected: 2, got: %d", len(parts))
+	}
+
+	if parts[0] != mail {
+		return false, errors.New("[ERROR] Incorrect mail address")
+	}
+
+	if parts[1] != role {
+		return false, errors.New("[ERROR] Incorrect role")
+	}
+
+	reqInValid1, err := http.NewRequest("GET", "/test", nil)
+	if err != nil {
+		return false, err
+	}
+
+	reqInValid1.Header.Set("InvalidHeader", "Bearer "+token)
+
+	res, err = test.Test(reqInValid1)
+	if err != nil {
+		return false, err
+	}
+
+	if res.StatusCode != 401 {
+		return false, errors.New("[ERROR] Status incorrect. Code:2. Status: " + res.Status)
+	}
+
+	reqInValid2, err := http.NewRequest("GET", "/test", nil)
+	if err != nil {
+		return false, err
+	}
+
+	reqInValid2.Header.Set("Authorization", token)
+
+	res, err = test.Test(reqInValid2)
+	if err != nil {
+		return false, err
+	}
+
+	if res.StatusCode != 401 {
+		return false, errors.New("[ERROR] Status incorrect. Code:3. Status: " + res.Status)
+	}
+
+	reqInValid3, err := http.NewRequest("GET", "/test", nil)
+	if err != nil {
+		return false, err
+	}
+
+	reqInValid3.Header.Set("InvalidHeader", "Bearer "+token+"invalid_part")
+
+	res, err = test.Test(reqInValid3)
+	if err != nil {
+		return false, err
+	}
+
+	if res.StatusCode != 401 {
+		return false, errors.New("[ERROR] Status incorrect. Code:4. Status: " + res.Status)
+	}
+
+	return true, nil
 }

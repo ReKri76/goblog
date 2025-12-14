@@ -66,6 +66,7 @@ func ChekJWT(public *rsa.PublicKey) fiber.Handler {
 		if auth == "" {
 			return c.Status(401).SendString("Authorization required")
 		}
+
 		parts := strings.Split(auth, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			return c.Status(401).SendString("Invalid Authorization header")
