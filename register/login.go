@@ -26,13 +26,11 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 		query := "SELECT Role, Password FROM users WHERE Mail = $1"
 		err := db.QueryRow(query, src.Mail).Scan(&data.Role, &data.Password)
 		if err != nil {
-			time.Sleep(time.Second * 5)
 			return c.Status(403).SendString("Invalid mail or password")
 		}
 
 		err = bcrypt.CompareHashAndPassword([]byte(data.Password), []byte(src.Password+src.Mail))
 		if err != nil {
-			time.Sleep(time.Second * 5)
 			return c.Status(403).SendString("Invalid mail or password")
 		}
 

@@ -14,14 +14,15 @@ func TestLogin(t *testing.T) {
 	defer db.Close()
 
 	test.Post("/register", register.Regist(db, private))
-	test.Post("/login", register.Login(db, private))
+	test.Post("/test", register.Login(db, private))
 
-	mail := "test"
+	mail := "test@"
 	role := "Author"
 	password := "test"
 
 	Register := fmt.Sprintf(`{"mail":"%s","role":"%s","password":"%s"}`, mail, role, password)
 	req, err := http.NewRequest(http.MethodPost, "/register", strings.NewReader(Register))
+	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	Loginer := fmt.Sprintf(`{"mail":"%s","role":"%s","password":"%s"}`, mail, role, password)
-	reqValid, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(Loginer))
+	reqValid, err := http.NewRequest(http.MethodPost, "/test", strings.NewReader(Loginer))
+	reqValid.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +50,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	LoginerInvalidMail := fmt.Sprintf(`{"mail":"%s","role":"%s","password":"%s"}`, "invalid", role, password)
-	reqInvalidMail, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(LoginerInvalidMail))
+	reqInvalidMail, err := http.NewRequest(http.MethodPost, "/test", strings.NewReader(LoginerInvalidMail))
+	reqInvalidMail.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +76,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	LoginerInvalidPassword := fmt.Sprintf(`{"mail":"%s","role":"%s","password":"%s"}`, mail, role, "invalid")
-	reqInvalidPassword, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(LoginerInvalidPassword))
+	reqInvalidPassword, err := http.NewRequest(http.MethodPost, "/test", strings.NewReader(LoginerInvalidPassword))
+	reqInvalidPassword.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +102,8 @@ func TestLogin(t *testing.T) {
 	}
 
 	LoginerInvalidRole := fmt.Sprintf(`{"mail":"%s","role":"%s","password":"%s"}`, mail, "invalid", password)
-	reqInvalidRole, err := http.NewRequest(http.MethodPost, "/login", strings.NewReader(LoginerInvalidRole))
+	reqInvalidRole, err := http.NewRequest(http.MethodPost, "/test", strings.NewReader(LoginerInvalidRole))
+	reqInvalidRole.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		t.Fatal(err)
 	}

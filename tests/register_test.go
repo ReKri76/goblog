@@ -16,7 +16,7 @@ func TestRegist(t *testing.T) {
 
 	test.Post("/test", register.Regist(db, private))
 
-	mail := "test"
+	mail := "test@"
 	role := "Author"
 	password := "test"
 
@@ -28,6 +28,7 @@ func TestRegist(t *testing.T) {
 	reqValid.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	res, err := test.Test(reqValid)
+	defer db.Exec("DELETE FROM users WHERE mail=$1", mail)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +44,6 @@ func TestRegist(t *testing.T) {
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(pass), []byte(password+mail))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = db.Exec("DELETE FROM users WHERE mail=$1", mail)
 	if err != nil {
 		t.Fatal(err)
 	}
