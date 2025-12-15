@@ -3,29 +3,15 @@ package tests
 import (
 	"goblog/keys"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 )
 
 func TestJWT(t *testing.T) {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	private, err := keys.LoadPrivateKey(os.Getenv("PRIVATE_KEY"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	pub, err := keys.LoadPublicKey(os.Getenv("PUBLIC_KEY"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	_, _, test, pub, private := Load()
 
 	mail := "test"
 	role := "test"
@@ -34,8 +20,6 @@ func TestJWT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
-	test := fiber.New()
 
 	test.Use(keys.ChekJWT(pub))
 

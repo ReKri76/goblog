@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -19,7 +20,7 @@ func Load() (db *sql.DB, mn *minio.Client, app *fiber.App, public *rsa.PublicKey
 		log.Fatal("Error loading .env file")
 	}
 	app = fiber.New(fiber.Config{
-		Prefork:       true,
+		Prefork:       false,
 		CaseSensitive: false,
 		StrictRouting: false,
 	})
@@ -38,6 +39,9 @@ func Load() (db *sql.DB, mn *minio.Client, app *fiber.App, public *rsa.PublicKey
 		os.Getenv("DB_HOST"), os.Getenv("DB_PORT"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
 
 	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err = db.Ping(); err != nil {
 		log.Fatal(err)
 	}

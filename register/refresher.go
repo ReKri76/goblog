@@ -55,9 +55,12 @@ func Refresh(db *sql.DB, private *rsa.PrivateKey, public *rsa.PublicKey) fiber.H
 		}
 
 		c.Cookie(&fiber.Cookie{
-			Name:    "refresh_token",
-			Value:   refresh,
-			Expires: time.Now().Add(24 * 7 * time.Hour),
+			Name:     "refresh_token",
+			Value:    refresh,
+			Expires:  time.Now().Add(24 * 7 * time.Hour),
+			HTTPOnly: true,
+			Secure:   true,
+			SameSite: "Lax",
 		})
 
 		return c.Status(200).JSON(fiber.Map{

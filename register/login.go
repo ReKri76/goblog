@@ -37,18 +37,20 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 		}
 
 		if src.Role != data.Role {
-			return c.Status(500).SendString("Invalid role")
+			return c.Status(403).SendString("Invalid role")
 		}
 		access, err := src.CreateJWT(2, private)
 		if err != nil {
 			return err
 		}
+
 		refresh, err := src.CreateJWT(24*7, private)
 		if err != nil {
 			return err
 		}
-		insertQuery := "UPDATE users SET RefreshToken = $1, RefreshTime = $2 WHERE Mail = $3"
-		_, err = db.Exec(insertQuery,
+
+		query = "UPDATE users SET RefreshToken = $1, RefreshTime = $2 WHERE Mail = $3"
+		_, err = db.Exec(query,
 			refresh,
 			time.Now().Add(time.Hour*time.Duration(24*7)).Unix(),
 			src.Mail,
@@ -56,6 +58,7 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 		if err != nil {
 			return err
 		}
+
 		c.Cookie(&fiber.Cookie{
 			Name:     "refresh_token",
 			Value:    refresh,
