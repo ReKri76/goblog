@@ -42,7 +42,7 @@ func CreatePost(db *sql.DB) fiber.Handler {
 		}
 
 		if rows == 0 {
-			return c.Status(404).SendString("Post not found")
+			return c.Status(409).SendString("Key already used")
 		}
 
 		return c.Status(201).SendString("Successfully created post")
@@ -136,7 +136,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 		page := c.QueryInt("page")
 
 		var data []Post
-		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $2 OFFSET $3", c.Locals("Mail"), limit, limit*page)
+		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $2 OFFSET $3", c.Locals("mail"), limit, limit*page)
 		if err != nil {
 			return err
 		}
