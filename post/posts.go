@@ -61,7 +61,7 @@ func PublicPost(db *sql.DB) fiber.Handler {
 
 		Key, err := c.ParamsInt("postId")
 		if err != nil {
-			return c.Status(400).SendString("Invalid postId request")
+			return c.Status(409).SendString("Invalid postId request")
 		}
 
 		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
@@ -96,7 +96,7 @@ func ChangePost(db *sql.DB) fiber.Handler {
 
 		Key, err := c.ParamsInt("postId")
 		if err != nil {
-			return c.Status(400).SendString("Invalid request")
+			return c.Status(409).SendString("Invalid request")
 		}
 
 		//слово не воробей
