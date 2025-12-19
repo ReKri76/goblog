@@ -237,7 +237,7 @@ func TestChangePost(t *testing.T) {
 
 	test.Post("/InvalidRole/test/:postId/", post.ChangePost(db))
 	test.Post("/valid/test/:postId/", post.ChangePost(db))
-	test.Post("/InvalidMail/test/:postId/", post.ChangePost(db)) // Добавляем маршрут
+	test.Post("/InvalidMail/test/:postId/", post.ChangePost(db))
 
 	query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
 				values ($1, $2, $3, $4, $5, $6, $7, ARRAY[$8])`
