@@ -8,6 +8,18 @@ import (
 	"github.com/lib/pq"
 )
 
+type Post struct {
+	Id      int
+	Key     int
+	Author  string
+	Title   string
+	Content string
+	Created int64
+	Updated int64
+	Status  string
+	Images  pq.StringArray
+}
+
 func CreatePost(db *sql.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		role := c.Locals("role").(string)
@@ -120,35 +132,23 @@ func ChangePost(db *sql.DB) fiber.Handler {
 
 func ReadPost(db *sql.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		type Post struct {
-			Id      int
-			Author  string
-			Title   string
-			Content string
-			Key     string
-			Created string
-			Updated string
-			Status  string
-			Images  pq.StringArray
-		}
 
 		limit := 16
 		page := c.QueryInt("page")
 
 		var data []Post
-		rows, err := db.Query("SELECT * FROM posts WHERE Author<>$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $2 OFFSET $3", c.Locals("mail"), limit, limit*page)
+		rows, err := db.Query("SELECT * FROM posts WHERE Author=$1 OR Status<>'Draft' ORDER BY Created DESC LIMIT $2 OFFSET $3", c.Locals("mail"), limit, limit*page)
 		if err != nil {
 			return err
 		}
 
 		for rows.Next() {
 			var post Post
-			if err = rows.Scan(&post.Id, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images, &post.Author); err != nil {
+			if err = rows.Scan(&post.Id, &post.Author, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images); err != nil {
 				return err
 			}
 			data = append(data, post)
 		}
-
 		return c.Status(200).JSON(fiber.Map{
 			"data": &data,
 			"page": page,

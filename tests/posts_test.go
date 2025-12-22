@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"goblog/post"
 	"net/http"
@@ -341,4 +342,79 @@ func TestChangePost(t *testing.T) {
 	if res.StatusCode != 404 {
 		t.Errorf("Status is not 404: %d", res.StatusCode)
 	}
+}
+
+func TestReadPost(t *testing.T) {
+	db, _, test, _, _ := Load()
+	defer db.Close()
+
+	mail1 := "test@1"
+	mail2 := "test@2"
+
+	for i := 1; i < 128; i++ {
+
+		var status string
+		if i%3 == 0 {
+			status = "Draft"
+		} else {
+			status = "Published"
+		}
+		if i%2 == 0 {
+			query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
+				values ($1, $2, $3, $4, $5, $6, $7, ARRAY[$8])`
+			_, err := db.Exec(query, mail1, i, "TestTitle", "TestBody", time.Now().Unix(), time.Now().Unix(), status, "")
+			defer db.Exec(fmt.Sprintf("delete from posts where key=%d", i))
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
+				values ($1, $2, $3, $4, $5, $6, $7, ARRAY[$8])`
+			_, err := db.Exec(query, mail2, i, "TestTitle", "TestBody", time.Now().Unix(), time.Now().Unix(), "Draft", "")
+			defer db.Exec(fmt.Sprintf("delete from posts where key=%d", i))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+		}
+	}
+	test.Use(func(c *fiber.Ctx) error {
+		c.Locals("mail", mail1)
+		return c.Next()
+	})
+	test.Get("/test", post.ReadPost(db))
+
+	for i := range make([]bool, 64) {
+		url := fmt.Sprintf("/test/?page=%d", i)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		res, err := test.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var body struct {
+			Data []post.Post `json:"data"`
+			Page int         `json:"page"`
+		}
+
+		err = json.NewDecoder(res.Body).Decode(&body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(body.Data) > 16 {
+			t.Errorf("Post #%d is too large", i)
+		}
+
+		for _, v := range body.Data {
+			if v.Status == "Draft" && v.Author != mail1 {
+				t.Errorf("Post #%d is draft", i)
+			}
+		}
+	}
+
 }
