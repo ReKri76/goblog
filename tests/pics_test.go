@@ -1,41 +1,51 @@
 package tests
 
-/*
 import (
 	"goblog/post"
-	"net/http"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func TestAddImage(t *testing.T) {
-
+func TestAddAllPics(t *testing.T) {
 	db, mn, test, _, _ := Load()
 	defer db.Close()
 
+	role := "Author"
+	mail := "test@"
+
 	test.Use("/valid", func(c *fiber.Ctx) error {
-		c.Locals("role", "Author")
+		c.Locals("role", role)
+		c.Locals("mail", mail)
+		return c.Next()
+	})
+	test.Use("/invalidRole", func(c *fiber.Ctx) error {
+		c.Locals("role", "invalid")
+		c.Locals("mail", mail)
+		return c.Next()
+	})
+	test.Use("/invalidMail", func(c *fiber.Ctx) error {
+		c.Locals("role", "invalid")
+		c.Locals("mail", "invalid")
 		return c.Next()
 	})
 
-	test.Post("/valid/test", post.AddImage(db, mn))
+	test.Post("/valid/:postId/test", post.AddImage(db, mn))
+	test.Post("/invalidRole/:postId/test", post.AddImage(db, mn))
+	test.Post("/invalidMail/:postId/test", post.AddImage(db, mn))
 
-	Validreq, err := http.NewRequest("GET", "/valid/test", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	test.Delete("/valid/:postId/:imagePath", post.DeleteImage(db, mn))
+	test.Delete("/invalidRole/:postId/:imagePath", post.DeleteImage(db, mn))
+	test.Delete("/invalidMail/:postId/:imagePath", post.DeleteImage(db, mn))
 
-	query := "INSERT INTO posts (key) values (1)"
-	_, err = db.Exec(query)
-	if err != nil {
-		t.Fatal(err)
-	}
+	path := os.Getenv("TEST_IMAGE")
 
-	res, err := test.Test(Validreq)
+	data, err := os.Open(path)
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
+	defer data.Close()
 
 }
-*/
