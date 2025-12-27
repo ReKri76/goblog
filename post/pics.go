@@ -64,9 +64,14 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return err
 		}
 
+		key, err := c.ParamsInt("postId")
+		if err != nil {
+			return c.Status(409).SendString("Invalid request")
+		}
+
 		//слово не воробей
 		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND key=$3 AND status='Draft'"
-		res, err := db.Exec(query, path, c.Locals("mail"), c.Params("postId"))
+		res, err := db.Exec(query, path, c.Locals("mail"), key)
 		if err != nil {
 			return err
 		}
@@ -96,7 +101,7 @@ func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 
 		key, err := c.ParamsInt("postId")
 		if err != nil {
-			return err
+			return c.Status(409).SendString("Invalid request")
 		}
 
 		query := "UPDATE posts SET images=array_remove(images,$3) where author=$1 AND key=$2 AND status='Draft'"
