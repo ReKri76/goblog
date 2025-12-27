@@ -400,7 +400,6 @@ func TestReadPost(t *testing.T) {
 			Data []post.Post `json:"data"`
 			Page int         `json:"page"`
 		}
-
 		err = json.NewDecoder(res.Body).Decode(&body)
 		if err != nil {
 			t.Fatal(err)

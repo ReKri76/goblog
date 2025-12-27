@@ -144,7 +144,7 @@ func ReadPost(db *sql.DB) fiber.Handler {
 
 		for rows.Next() {
 			var post Post
-			if err = rows.Scan(&post.Id, &post.Author, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images); err != nil {
+			if err = rows.Scan(&post.Id, &post.Key, &post.Title, &post.Content, &post.Created, &post.Updated, &post.Status, &post.Images, &post.Author); err != nil {
 				return err
 			}
 			data = append(data, post)

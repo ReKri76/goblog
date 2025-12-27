@@ -260,10 +260,6 @@ func TestAllPics(t *testing.T) {
 		t.Errorf("Invalid status code: %d", res.StatusCode)
 	}
 
-	if res.StatusCode != 200 {
-		t.Errorf("Invalid status code: %d", res.StatusCode)
-	}
-
 	url = fmt.Sprintf("/valid/%d/%s/test", 1, pathname)
 	req, err = http.NewRequest("DELETE", url, nil)
 	if err != nil {
