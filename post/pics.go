@@ -1,13 +1,8 @@
 package post
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
-	"io"
-	"net/http"
-	"strings"
-	"time"
+	"goblog/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minio/minio-go/v7"
@@ -19,70 +14,24 @@ func AddImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return c.Status(403).SendString("User is not author")
 		}
 
-		header, err := c.FormFile("image")
-		if err != nil {
-			return err
-		}
-
-		file, err := header.Open()
-		defer file.Close()
-		if err != nil {
-			return err
-		}
-
-		buf := make([]byte, 512)
-		_, err = file.Read(buf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-
-		ext := http.DetectContentType(buf)
-		if ext != "image/jpeg" && ext != "image/png" && ext != "image/gif" && ext != "image/webp" && ext != "image/tiff" && ext != "image/svg+xml" && ext != "image/pjpeg" {
-			return c.Status(400).SendString("File is not a picture")
-		}
-		ext = strings.TrimPrefix(ext, "image/")
-		_, err = file.Seek(0, 0)
-		if err != nil {
-			return err
-		}
-
-		name := header.Filename
-		name = "[" + name + "][" + fmt.Sprint(time.Now().Unix()) + "]." + ext
-		path := "images/" + name
-
-		_, err = mn.PutObject(
-			context.Background(),
-			"images",
-			name,
-			file,
-			header.Size,
-			minio.PutObjectOptions{
-				ContentType: "image/" + ext,
-			},
-		)
-		if err != nil {
-			return err
-		}
-
 		key, err := c.ParamsInt("postId")
 		if err != nil {
 			return c.Status(409).SendString("Invalid request")
 		}
 
-		//слово не воробей
-		query := "UPDATE posts SET images = array_append(images, $1) where author=$2 AND key=$3 AND status='Draft'"
-		res, err := db.Exec(query, path, c.Locals("mail"), key)
+		header, err := c.FormFile("image")
 		if err != nil {
 			return err
 		}
 
-		rows, err := res.RowsAffected()
+		err, path := service.AddImageService(header, mn, db, c.Locals("mail").(string), key)
 		if err != nil {
-			return err
-		}
-
-		if rows == 0 {
-			return c.Status(404).SendString("Not found")
+			if err.Error() == "Image is not picture" {
+				return c.Status(400).SendString(err.Error())
+			}
+			if err.Error() == "Not found" {
+				return c.Status(404).SendString(err.Error())
+			}
 		}
 
 		return c.Status(201).JSON(fiber.Map{
@@ -104,22 +53,11 @@ func DeleteImage(db *sql.DB, mn *minio.Client) fiber.Handler {
 			return c.Status(409).SendString("Invalid request")
 		}
 
-		query := "UPDATE posts SET images=array_remove(images,$3) where author=$1 AND key=$2 AND status='Draft'"
-		res, err := db.Exec(query, mail, key, "images"+c.Params("imagePath"))
+		err = service.DeleteImageService(mn, db, mail, key, c.Query("path"))
 		if err != nil {
-			return err
-		}
-
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows == 0 {
-			return c.Status(404).SendString("Not found")
-		}
-
-		err = mn.RemoveObject(context.Background(), "images", c.Params("imagePath"), minio.RemoveObjectOptions{})
-		if err != nil {
+			if err.Error() == "Not found" {
+				return c.Status(404).SendString(err.Error())
+			}
 			return err
 		}
 

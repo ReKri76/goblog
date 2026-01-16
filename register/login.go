@@ -4,10 +4,10 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"goblog/keys"
+	"goblog/service"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
@@ -22,21 +22,11 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 			return err
 		}
 
-		var data loginer
-		query := "SELECT Role, Password FROM users WHERE Mail = $1"
-		err := db.QueryRow(query, src.Mail).Scan(&data.Role, &data.Password)
+		err := service.LoginChek(db, src.Mail, src.Password)
 		if err != nil {
 			return c.Status(403).SendString("Invalid mail or password")
 		}
 
-		err = bcrypt.CompareHashAndPassword([]byte(data.Password), []byte(src.Password+src.Mail))
-		if err != nil {
-			return c.Status(403).SendString("Invalid mail or password")
-		}
-
-		if src.Role != data.Role {
-			return c.Status(403).SendString("Invalid role")
-		}
 		access, err := src.CreateJWT(2, private)
 		if err != nil {
 			return err
@@ -47,12 +37,7 @@ func Login(db *sql.DB, private *rsa.PrivateKey) fiber.Handler {
 			return err
 		}
 
-		query = "UPDATE users SET RefreshToken = $1, RefreshTime = $2 WHERE Mail = $3"
-		_, err = db.Exec(query,
-			refresh,
-			time.Now().Add(time.Hour*time.Duration(24*7)).Unix(),
-			src.Mail,
-		)
+		err = service.Login(db, refresh, src.Mail)
 		if err != nil {
 			return err
 		}

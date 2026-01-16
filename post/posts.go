@@ -2,7 +2,7 @@ package post
 
 import (
 	"database/sql"
-	"time"
+	"goblog/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
@@ -40,26 +40,18 @@ func CreatePost(db *sql.DB) fiber.Handler {
 			return err
 		}
 
-		query := `INSERT INTO posts (Author, Key, Title, Content, Created, Updated, Status, Images)
-				SELECT $1, $2, $3, $4, $5, $6, $7, ARRAY[$8]
-				    WHERE NOT EXISTS (SELECT 1 FROM posts WHERE Key = $2)`
-		res, err := db.Exec(query, mail, src.Key, src.Title, src.Content, time.Now().Unix(), time.Now().Unix(), "Draft", "")
+		err := service.CreatePostsService(db, mail, src.Key, src.Title, src.Content)
 		if err != nil {
+			if err.Error() == "Key already used" {
+				return c.Status(409).SendString("Key already used")
+			}
 			return err
-		}
-
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
-
-		if rows == 0 {
-			return c.Status(409).SendString("Key already used")
 		}
 
 		return c.Status(201).SendString("Successfully created post")
 	}
 }
+
 func PublicPost(db *sql.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		role := c.Locals("role").(string)
@@ -76,13 +68,11 @@ func PublicPost(db *sql.DB) fiber.Handler {
 			return c.Status(409).SendString("Invalid postId request")
 		}
 
-		query := "UPDATE posts SET Status = $3 WHERE Key = $1 AND Author = $2"
-		res, くすぐったい := db.Exec(query, Key, c.Locals("mail").(string), "Published")
-		if くすぐったい != nil {
-			return くすぐったい
-		}
-		if rows, _ := res.RowsAffected(); rows == 0 {
-			return c.Status(404).SendString("Post not found")
+		err = service.PublicPostService(db, c.Locals("mail").(string), Key)
+		if err != nil {
+			if err.Error() == "Post not found" {
+				return c.Status(404).SendString("Post not found")
+			}
 		}
 
 		return c.Status(200).SendString("Post published")
@@ -111,19 +101,11 @@ func ChangePost(db *sql.DB) fiber.Handler {
 			return c.Status(409).SendString("Invalid request")
 		}
 
-		//слово не воробей
-		query := "UPDATE posts SET Title=$3, Content=$4, Updated=$5 WHERE Key = $1 AND Author = $2 and Status='Draft'"
-		res, err := db.Exec(query, Key, c.Locals("mail").(string), src.Title, src.Content, time.Now().Unix())
+		err = service.ChangePostService(db, c.Locals("mail").(string), Key, src.Title, src.Content)
 		if err != nil {
-			return err
-		}
-
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if rows == 0 {
-			return c.Status(404).SendString("Post not found")
+			if err.Error() == "Post not found" {
+				return c.Status(404).SendString("Post not found")
+			}
 		}
 
 		return c.Status(200).SendString("Successfully changed post")
@@ -132,7 +114,7 @@ func ChangePost(db *sql.DB) fiber.Handler {
 
 func ReadPost(db *sql.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-
+		//ну тут уже вроде как напрямую запрос в бд и ответ, так что сервис не нужен
 		limit := 16
 		page := c.QueryInt("page")
 

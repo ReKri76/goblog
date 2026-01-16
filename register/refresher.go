@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"goblog/keys"
+	"goblog/service"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -34,15 +35,14 @@ func Refresh(db *sql.DB, private *rsa.PrivateKey, public *rsa.PublicKey) fiber.H
 			return c.Status(401).SendString("Invalid token")
 		}
 
-		query := "SELECT RefreshTime FROM users WHERE Mail = $1"
-		var data refresher
-		err = db.QueryRow(query, claims["mail"]).Scan(&data.RefreshTime)
+		err = service.RefresherService(db, claims["mail"].(string))
 		if err != nil {
-			return err
-		}
-		if data.RefreshTime < time.Now().Unix() {
 			return c.Status(401).SendString("Invalid token")
 		}
+
+		var data keys.Record
+		data.Mail = claims["mail"].(string)
+		data.Role = claims["role"].(string)
 
 		access, err := data.CreateJWT(2, private)
 		if err != nil {
